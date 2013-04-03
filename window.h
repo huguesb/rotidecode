@@ -20,6 +20,8 @@
 class Editor;
 class Buffers;
 
+class QModelIndex;
+
 /*!
  * \class Window
  * \brief Main window of RotiDeCode
@@ -44,8 +46,11 @@ private slots:
     void cleanChanged(bool clean);
     void fileNameChanged(QString oldFileName, QString newFileName);
     
+    void currentBufferChanged(const QModelIndex& current, const QModelIndex& previous);
+    
 private:
     void createMenu();
+    void createBuffersDock();
     
     Editor *m_editor;
     Buffers *m_buffers;

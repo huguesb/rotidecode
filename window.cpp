@@ -18,6 +18,8 @@
 #include "buffers.h"
 
 #include <QAction>
+#include <QDockWidget>
+#include <QListView>
 #include <QMenu>
 #include <QMenuBar>
 #include <QFileDialog>
@@ -39,6 +41,7 @@ Window::Window() {
             this    , SLOT  ( fileNameChanged(QString, QString) ));
     
     createMenu();
+    createBuffersDock();
 }
 
 Window::~Window() {
@@ -102,6 +105,19 @@ void Window::createMenu() {
     
 }
 
+void Window::createBuffersDock() {
+    QListView *view = new QListView;
+    view->setModel(m_buffers);
+    
+    connect(view->selectionModel(), SIGNAL( currentChanged(QModelIndex, QModelIndex) ),
+            this, SLOT( currentBufferChanged(QModelIndex, QModelIndex) ) );
+    
+    QDockWidget *dock = new QDockWidget(tr("Open Files"), this);
+    dock->setWidget(view);
+    
+    addDockWidget(Qt::LeftDockWidgetArea, dock);
+}
+
 
 void Window::fileNew() {
     m_buffers->release(m_editor->setActiveEditor(m_buffers->acquire(m_buffers->create())));
@@ -125,11 +141,12 @@ void Window::fileReload() {
 }
 
 void Window::fileSave() {
-    
+    m_editor->save(m_editor->activeFileName());
 }
 
 void Window::fileClose() {
-    
+    // TODO: warn if unsaved files
+    m_buffers->close(m_editor->activeFileName());
 }
 
 void Window::fileQuit() {
@@ -142,5 +159,11 @@ void Window::cleanChanged(bool clean) {
 }
 
 void Window::fileNameChanged(QString oldFileName, QString newFileName) {
+    Q_UNUSED(oldFileName);
     setWindowTitle(tr("%1[*] - RotiDeCode").arg(newFileName));
+}
+
+void Window::currentBufferChanged(const QModelIndex& current, const QModelIndex& previous) {
+    QString path = m_buffers->data(current, Buffers::PathRole).toString();
+    m_buffers->release(m_editor->setActiveEditor(m_buffers->acquire(path)));
 }

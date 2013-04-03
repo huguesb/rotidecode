@@ -15,7 +15,7 @@
 #ifndef BUFFERS_H_
 #define BUFFERS_H_
 
-#include <QObject>
+#include <QAbstractListModel>
 #include <QHash>
 #include <QString>
 
@@ -30,9 +30,16 @@ class Document;
  * \class Buffers
  * \brief Manages open buffers
  */
-class Buffers : public QObject {
+class Buffers : public QAbstractListModel {
     Q_OBJECT
 public:
+    // extra data roles offered through the model API
+    enum Roles {
+        PathRole = Qt::UserRole,        //!< string: absolute path
+        ModificationRole,               //!< bool: is the buffer modified?
+        OpenViewsRole,                  //!< int: number of views
+    };
+    
     Buffers(QObject *p = 0);
     ~Buffers();
     
@@ -44,17 +51,31 @@ public:
     
     bool isUntitled(qce::Editor *e) const;
     
+    // model api
+    virtual int rowCount(const QModelIndex& parent) const;
+    virtual QVariant data(const QModelIndex& index, int role) const;
+    virtual Qt::ItemFlags flags(const QModelIndex& index) const;
+    virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+    
+public slots:
+    void close(const QString& fileName);
+    
 signals:
     void closeRequested(qce::Editor *e);
     
 private slots:
+    void cleanChanged(bool clean);
     void fileNameChanged(QString oldFileName, QString newFileName);
     
 private:
     Buffer* createBuffer(QString name);
+    void close(int idx);
+    
+    void emitDataChanged(int idx);
     
     quint64 m_untitled;
-    QHash<QString, Buffer*> m_buffers;
+    // alphabetically sorted by fileName
+    QList<Buffer*> m_buffers;
 };
 
 #endif  // BUFFERS_H_
