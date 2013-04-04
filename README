@@ -4,3 +4,8 @@ RotiDeCode, make code so good you want to eat it
 A trimmed-down text editor that aims to demonstrate the power and ease of use
 of QCodeEdit 3
 
+Dependencies: Qt >= 4.6, QCodeEdit >= 3
+
+Licensed under FreeBSD license (2-clause BSD, aka "Simplified BSD")
+
+

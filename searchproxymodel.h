@@ -24,62 +24,33 @@
  * POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
-#ifndef WINDOW_H_
-#define WINDOW_H_
+#ifndef SEARCH_PROXY_MODEL_H_
+#define SEARCH_PROXY_MODEL_H_
 
-#include <QMainWindow>
-
-class Editor;
-class Buffers;
-class CommandBar;
-
-namespace qce{
-class Editor;
-class CodeEditor;
-}
-
-class QListView;
-class QModelIndex;
+#include <QSortFilterProxyModel>
 
 /*!
- * \class Window
- * \brief Main window of RotiDeCode
- * 
- * Manages the central Editor widget, provides a simple menubar and a handful
- * of dock widgets
+ * \class SearchProxyModel
+ * \brief Custom proxy model for quick search
  */
-class Window : public QMainWindow {
+class SearchProxyModel : public QSortFilterProxyModel {
     Q_OBJECT
 public:
-    Window();
-    ~Window();
+    SearchProxyModel(QObject *p = 0);
+    ~SearchProxyModel();
     
-private slots:
-    void fileNew();
-    void fileOpen();
-    void fileReload();
-    void fileSave();
-    void fileClose();
-    void fileQuit();
+    void setSearch(const QString& s);
     
-    void commandJump();
-    
-    void activeEditorChanged(qce::Editor *editor);
-    void cleanChanged(bool clean);
-    void fileNameChanged(QString oldFileName, QString newFileName);
-    
-    void currentBufferChanged(const QModelIndex& current, const QModelIndex& previous);
-    
-    void setActiveBuffer(const QString& path);
+protected:
+    virtual bool filterAcceptsColumn(int source_column,
+                                     const QModelIndex& source_parent) const;
+    virtual bool filterAcceptsRow(int source_row,
+                                  const QModelIndex& source_parent) const;
+    virtual bool lessThan(const QModelIndex& left,
+                          const QModelIndex& right) const;
     
 private:
-    void createMenu();
-    void createBuffersDock();
-    
-    qce::CodeEditor *m_editor;
-    Buffers *m_buffers;
-    QListView *m_bufferList;
-    CommandBar *m_commandBar;
+    QString m_search;
 };
 
-#endif  // WINDOW_H_
+#endif  // SEARCH_PROXY_MODEL_H_

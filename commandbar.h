@@ -24,62 +24,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
-#ifndef WINDOW_H_
-#define WINDOW_H_
+#ifndef COMMAND_BAR_H_
+#define COMMAND_BAR_H_
 
-#include <QMainWindow>
+#include <QWidget>
 
-class Editor;
-class Buffers;
-class CommandBar;
+#include "callback.h"
 
-namespace qce{
-class Editor;
-class CodeEditor;
-}
-
+class QLineEdit;
 class QListView;
-class QModelIndex;
+class QMetaMethod;
+class QAbstractItemModel;
+
+class SearchProxyModel;
 
 /*!
- * \class Window
- * \brief Main window of RotiDeCode
- * 
- * Manages the central Editor widget, provides a simple menubar and a handful
- * of dock widgets
+ * \class CommandBar
+ * \brief A wrapper around qce::CodeEditor
  */
-class Window : public QMainWindow {
+class CommandBar : public QWidget {
     Q_OBJECT
 public:
-    Window();
-    ~Window();
+    CommandBar();
+    ~CommandBar();
+    
+    void search(QWidget *w, QAbstractItemModel *model, int role,
+                Callback<QString> cb);
+    
+public slots:
+    
     
 private slots:
-    void fileNew();
-    void fileOpen();
-    void fileReload();
-    void fileSave();
-    void fileClose();
-    void fileQuit();
+    void done();
+    void textChanged(const QString& text);
     
-    void commandJump();
-    
-    void activeEditorChanged(qce::Editor *editor);
-    void cleanChanged(bool clean);
-    void fileNameChanged(QString oldFileName, QString newFileName);
-    
-    void currentBufferChanged(const QModelIndex& current, const QModelIndex& previous);
-    
-    void setActiveBuffer(const QString& path);
+protected:
+    bool eventFilter(QObject *o, QEvent *e);
     
 private:
-    void createMenu();
-    void createBuffersDock();
-    
-    qce::CodeEditor *m_editor;
-    Buffers *m_buffers;
-    QListView *m_bufferList;
-    CommandBar *m_commandBar;
+    QLineEdit *m_command;
+    QListView *m_results;
+    SearchProxyModel *m_proxy;
+    Callback<QString> m_callback;
 };
 
-#endif  // WINDOW_H_
+#endif  // COMMAND_BAR_H_

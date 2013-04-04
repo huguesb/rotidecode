@@ -1,38 +1,66 @@
-/****************************************************************************
-** Copyright (c) 2013 Hugues Luc Bruant <hugues@qcodeedit.org>
-** All rights reserved.
-**
-** This file is part of RotiDeCode
-**
-** This file may be used under the terms of the GNU General Public License
-** version 3 as published by the Free Software Foundation and appearing in the
-** file GPL.txt included in the packaging of this file.
-**
-** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-****************************************************************************/
+/*******************************************************************************
+ * Copyright (c) 2013, Hugues Luc Bruant <hugues@qcodeedit.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met: 
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ ******************************************************************************/
 
 #include "window.h"
 
-#include "editor.h"
 #include "buffers.h"
+#include "commandbar.h"
+
+#include <editor.h>
+#include <codeeditor.h>
 
 #include <QAction>
 #include <QDockWidget>
 #include <QListView>
 #include <QMenu>
 #include <QMenuBar>
+#include <QMetaMethod>
 #include <QFileDialog>
 #include <QApplication>
+
 
 Window::Window() {
     m_buffers = new Buffers(this);
     
-    m_editor = new Editor(m_buffers->acquire(m_buffers->create()), this);
+    m_editor = new qce::CodeEditor(this);
     setCentralWidget(m_editor);
+    
+    m_commandBar = new CommandBar;
     
     connect(m_buffers, SIGNAL( closeRequested(qce::Editor*) ),
             m_editor , SLOT  ( closeEditor(qce::Editor*) ));
+    
+    connect(m_editor , SIGNAL( editorOpened(qce::Editor*) ),
+            m_buffers, SLOT  ( editorOpened(qce::Editor*) ));
+    
+    connect(m_editor , SIGNAL( editorClosed(qce::Editor*) ),
+            m_buffers, SLOT  ( release(qce::Editor*) ));
+    
+    connect(m_editor, SIGNAL( activeEditorChanged(qce::Editor*) ),
+            this    , SLOT  ( activeEditorChanged(qce::Editor*) ));
     
     connect(m_editor, SIGNAL( cleanChanged(bool) ),
             this    , SLOT  ( cleanChanged(bool) ));
@@ -42,9 +70,12 @@ Window::Window() {
     
     createMenu();
     createBuffersDock();
+    
+    setWindowTitle("RotiDeCode");
 }
 
 Window::~Window() {
+    delete m_commandBar;
 }
 
 
@@ -61,6 +92,7 @@ void Window::createMenu() {
     a = m->addAction(tr("&Close"),  this, SLOT( fileClose() ), QKeySequence::Close);
     m->addSeparator();
     a = m->addAction(tr("&Quit"),   this, SLOT( fileQuit() ), QKeySequence::Quit);
+    
     
     m = menuBar()->addMenu(tr("&Edit"));
     a = m->addAction(tr("&Undo"),
@@ -86,12 +118,13 @@ void Window::createMenu() {
     a = m->addAction(tr("&Select All"),
                      m_editor, SLOT( selectAll() ), QKeySequence::SelectAll);
     
+    
     m = menuBar()->addMenu(tr("&View"));
     a = m->addAction(tr("Split &Horizontally"),
                      m_editor, SLOT( splitHorizontally() ), tr("Alt+Shift+H"));
     a = m->addAction(tr("Split &Vertically"),
                      m_editor, SLOT( splitVertically() ), tr("Alt+Shift+V"));
-    a = m->addAction(tr("Close Active View"),
+    a = m->addAction(tr("Close Active Vie&w"),
                      m_editor, SLOT( closeActiveEditor() ), tr("Alt+Shift+W"));
     m->addSeparator();
     a = m->addAction(tr("Activate Above"),
@@ -103,24 +136,34 @@ void Window::createMenu() {
     a = m->addAction(tr("Activate After"),
                      m_editor, SLOT( activateRight() ), tr("Alt+Shift+Right"));
     
+    
+    m = menuBar()->addMenu(tr("&Command"));
+    a = m->addAction(tr("&Jump to file"),
+                     this, SLOT( commandJump() ), tr("Alt+Shift+J"));
+    
 }
 
 void Window::createBuffersDock() {
-    QListView *view = new QListView;
-    view->setModel(m_buffers);
+    m_bufferList = new QListView;
+    m_bufferList->setModel(m_buffers);
     
-    connect(view->selectionModel(), SIGNAL( currentChanged(QModelIndex, QModelIndex) ),
-            this, SLOT( currentBufferChanged(QModelIndex, QModelIndex) ) );
+    connect(m_bufferList->selectionModel(),
+            SIGNAL( currentChanged(QModelIndex, QModelIndex) ),
+            this,
+            SLOT( currentBufferChanged(QModelIndex, QModelIndex) ) );
     
     QDockWidget *dock = new QDockWidget(tr("Open Files"), this);
-    dock->setWidget(view);
+    dock->setWidget(m_bufferList);
+    dock->setFeatures(QDockWidget::DockWidgetVerticalTitleBar);
+    
+    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
     
     addDockWidget(Qt::LeftDockWidgetArea, dock);
 }
 
 
 void Window::fileNew() {
-    m_buffers->release(m_editor->setActiveEditor(m_buffers->acquire(m_buffers->create())));
+    setActiveBuffer(m_buffers->create());
 }
 
 void Window::fileOpen() {
@@ -131,13 +174,17 @@ void Window::fileOpen() {
         QString path = QFileInfo(fileNames.at(i)).absoluteFilePath();
         m_buffers->load(path);
         if (i == fileNames.count() - 1) {
-            m_buffers->release(m_editor->setActiveEditor(m_buffers->acquire(path)));
+            setActiveBuffer(path);
         }
     }
 }
 
 void Window::fileReload() {
-    // TODO:
+    if (!m_editor->isClean()) {
+        // TODO: warn if unsaved file
+    }
+    
+    m_editor->load(m_editor->activeFileName());
 }
 
 void Window::fileSave() {
@@ -145,13 +192,32 @@ void Window::fileSave() {
 }
 
 void Window::fileClose() {
-    // TODO: warn if unsaved files
+    if (!m_editor->isClean()) {
+        // TODO: warn if unsaved file
+    }
+    
     m_buffers->close(m_editor->activeFileName());
 }
 
 void Window::fileQuit() {
-    // TODO: warn if unsaved files
+    // TODO: warn if unsaved buffers
     qApp->quit();
+}
+
+void Window::commandJump() {
+    Callback<QString> callback = Callback<QString>(this, "setActiveBuffer(QString)");
+    m_commandBar->search(this, m_buffers, Buffers::PathRole, callback);
+}
+
+void Window::activeEditorChanged(qce::Editor *editor) {
+    QModelIndex idx;
+    if (editor == 0) {
+        idx = m_buffers->index(0, 0, QModelIndex());
+    } else {
+        idx = m_buffers->indexForName(editor->fileName());
+    }
+    m_bufferList->selectionModel()->setCurrentIndex(idx,
+            QItemSelectionModel::Clear | QItemSelectionModel::Select);
 }
 
 void Window::cleanChanged(bool clean) {
@@ -160,10 +226,18 @@ void Window::cleanChanged(bool clean) {
 
 void Window::fileNameChanged(QString oldFileName, QString newFileName) {
     Q_UNUSED(oldFileName);
-    setWindowTitle(tr("%1[*] - RotiDeCode").arg(newFileName));
+    QString base;
+    if (!newFileName.isEmpty()) base = tr("%1[*] - ").arg(newFileName);
+    setWindowTitle(base + "RotiDeCode");
 }
 
 void Window::currentBufferChanged(const QModelIndex& current, const QModelIndex& previous) {
-    QString path = m_buffers->data(current, Buffers::PathRole).toString();
+    Q_UNUSED(previous);
+    if (!current.isValid()) return;
+    setActiveBuffer(m_buffers->data(current, Buffers::PathRole).toString());
+}
+
+void Window::setActiveBuffer(const QString& path) {
+    if (path == m_editor->activeFileName()) return;
     m_buffers->release(m_editor->setActiveEditor(m_buffers->acquire(path)));
 }

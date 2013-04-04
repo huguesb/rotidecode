@@ -1,7 +1,5 @@
-# Copyright (c) 2013 Hugues Luc Bruant. All rights reserved.
-# Contact: hugues.bruant@gmail.com
-#
-# CMake project file for RotiDeCode
+# Copyright (c) 2013 Hugues Luc Bruant <hugues@qcodeedit.org>
+# All rights reserved.
 
 cmake_minimum_required(VERSION 2.5)
 
@@ -18,12 +16,14 @@ add_qce_executable(rotidecode
     HDRS
         app.h
         window.h
-        editor.h
         buffers.h
+        searchproxymodel.h
+        commandbar.h
     SRCS
         app.cpp
         window.cpp
-        editor.cpp
         buffers.cpp
+        searchproxymodel.cpp
+        commandbar.cpp
         main.cpp
 )

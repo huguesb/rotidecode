@@ -24,62 +24,35 @@
  * POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
-#ifndef WINDOW_H_
-#define WINDOW_H_
+#include "searchproxymodel.h"
 
-#include <QMainWindow>
-
-class Editor;
-class Buffers;
-class CommandBar;
-
-namespace qce{
-class Editor;
-class CodeEditor;
+SearchProxyModel::SearchProxyModel(QObject *p)
+    : QSortFilterProxyModel(p) {
 }
 
-class QListView;
-class QModelIndex;
+SearchProxyModel::~SearchProxyModel() {
+}
 
-/*!
- * \class Window
- * \brief Main window of RotiDeCode
- * 
- * Manages the central Editor widget, provides a simple menubar and a handful
- * of dock widgets
- */
-class Window : public QMainWindow {
-    Q_OBJECT
-public:
-    Window();
-    ~Window();
-    
-private slots:
-    void fileNew();
-    void fileOpen();
-    void fileReload();
-    void fileSave();
-    void fileClose();
-    void fileQuit();
-    
-    void commandJump();
-    
-    void activeEditorChanged(qce::Editor *editor);
-    void cleanChanged(bool clean);
-    void fileNameChanged(QString oldFileName, QString newFileName);
-    
-    void currentBufferChanged(const QModelIndex& current, const QModelIndex& previous);
-    
-    void setActiveBuffer(const QString& path);
-    
-private:
-    void createMenu();
-    void createBuffersDock();
-    
-    qce::CodeEditor *m_editor;
-    Buffers *m_buffers;
-    QListView *m_bufferList;
-    CommandBar *m_commandBar;
-};
 
-#endif  // WINDOW_H_
+void SearchProxyModel::setSearch(const QString& search) {
+    m_search = search;
+    setFilterRegExp(QRegExp(search, Qt::CaseInsensitive, QRegExp::WildcardUnix)),
+    invalidate();
+}
+
+bool SearchProxyModel::filterAcceptsColumn(
+        int source_column, const QModelIndex& source_parent) const {
+    return true;
+}
+
+bool SearchProxyModel::filterAcceptsRow(
+        int source_row, const QModelIndex& source_parent) const {
+    //QString s = sourceModel()->data(source_row, 0, source_parent);
+    return QSortFilterProxyModel::filterAcceptsRow(source_row, source_parent);
+}
+
+bool SearchProxyModel::lessThan(
+        const QModelIndex& left, const QModelIndex& right) const {
+    return QSortFilterProxyModel::lessThan(left, right);
+}
+

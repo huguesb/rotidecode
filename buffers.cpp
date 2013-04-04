@@ -1,16 +1,28 @@
-/****************************************************************************
-** Copyright (c) 2013 Hugues Luc Bruant <hugues@qcodeedit.org>
-** All rights reserved.
-**
-** This file is part of RotiDeCode
-**
-** This file may be used under the terms of the GNU General Public License
-** version 3 as published by the Free Software Foundation and appearing in the
-** file GPL.txt included in the packaging of this file.
-**
-** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-****************************************************************************/
+/*******************************************************************************
+ * Copyright (c) 2013, Hugues Luc Bruant <hugues@qcodeedit.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met: 
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ ******************************************************************************/
 
 #include "buffers.h"
 
@@ -20,6 +32,7 @@
 
 #include <QFileInfo>
 #include <QSet>
+#include <QDebug>
 
 struct Buffer {
     qce::Document *document;
@@ -78,6 +91,10 @@ void insert(QList<T>& l, const T& t, const K& k) {
 Buffers::Buffers(QObject *p)
     : QAbstractListModel(p)
     , m_untitled(0) {
+    m_panelLayout[qce::West]
+            << "qce.panels.LineMark"
+            << "qce.panels.LineNumber"
+            << "qce.panels.Fold";
 }
 
 Buffers::~Buffers() {
@@ -87,6 +104,8 @@ Buffers::~Buffers() {
 Buffer* Buffers::createBuffer(QString name) {
     Buffer *b = new Buffer(new qce::Document(name, this));
     b->document->setHighlighter(qce::SyntaxHighlighter::fromFilename(name));
+    connect(b->document, SIGNAL( cleanChanged(bool) ),
+            this       , SLOT  ( cleanChanged(bool) ));
     connect(b->document, SIGNAL( fileNameChanged(QString, QString) ),
             this       , SLOT  ( fileNameChanged(QString, QString) ));
     
@@ -117,13 +136,18 @@ qce::Editor* Buffers::acquire(const QString& fileName) {
     Q_ASSERT(b);
     
     qce::Editor *e = b->released;
-    if (!e) e = new qce::Editor(b->document);
+    if (!e) {
+        e = new qce::Editor(b->document);
+        e->addPanels(m_panelLayout);
+    }
     b->acquired.insert(e);
     b->released = 0;
     return e;
 }
 
 void Buffers::release(qce::Editor *e) {
+    if (!e) return;
+    
     QString fileName = e->fileName();
     Buffer *b = find(m_buffers, fileName);
     Q_ASSERT(b && b->acquired.contains(e));
@@ -144,6 +168,14 @@ void Buffers::close(const QString& fileName) {
     }
 }
 
+void Buffers::editorOpened(qce::Editor *e) {
+    QString fileName = e->fileName();
+    Buffer *b = find(m_buffers, fileName);
+    Q_ASSERT(b && !b->acquired.contains(e));
+    Q_ASSERT(e->document() == b->document);
+    b->acquired.insert(e);
+}
+
 void Buffers::cleanChanged(bool clean) {
     Q_UNUSED(clean);
     const qce::Document *d = qobject_cast<const qce::Document*>(sender());
@@ -156,7 +188,7 @@ void Buffers::fileNameChanged(QString oldFileName, QString newFileName) {
     int idx = lowerBound(m_buffers, oldFileName);
     Q_ASSERT(idx < m_buffers.count());
     Buffer *b = m_buffers.at(idx);
-    Q_ASSERT(KeyExtractor(b) == oldFileName);
+    Q_ASSERT(b->fileName == oldFileName);
     
     beginRemoveRows(QModelIndex(), idx, idx);
     m_buffers.removeAt(idx);
@@ -179,21 +211,39 @@ void Buffers::fileNameChanged(QString oldFileName, QString newFileName) {
 
 void Buffers::close(int idx) {
     Buffer *b = m_buffers.at(idx);
+    qDebug("close: %i %s", idx, qPrintable(b->fileName));
+    
+    if (b->released) {
+        b->released->deleteLater();
+        b->released = 0;
+    }
+    
+    if (!b->document->isClean()) {
+        // TODO: offer the opportunity to save
+    }
+    
+    // need to iterate on a copy:
+    // closeRequested -> editor is closed -> release called
+    QSet<qce::Editor*> acquired = b->acquired;
+    foreach (qce::Editor *e, acquired) {
+        emit closeRequested(e);
+        b->released = 0;
+    }
+    b->document->deleteLater();
+    
+    // must remove from model last to allow release to work
     beginRemoveRows(QModelIndex(), idx, idx);
     m_buffers.removeAt(idx);
     endRemoveRows();
     
-    if (b->released) b->released->deleteLater();
-    if (!b->document->isClean()) {
-        // TODO: offer the opportunity to save
-    }
-    foreach (qce::Editor *e, b->acquired) {
-        emit closeRequested(e);
-    }
-    b->document->deleteLater();
     delete b;
 }
 
+QModelIndex Buffers::indexForName(const QString& name) const {
+    int idx = lowerBound(m_buffers, name);
+    Buffer *b = idx < m_buffers.count() ? m_buffers.at(idx) : 0;
+    return b && b->fileName == name ? index(idx, 0, QModelIndex()) : QModelIndex();
+}
 
 int Buffers::rowCount(const QModelIndex& parent) const {
     return parent.isValid() ? 0 : m_buffers.count();
