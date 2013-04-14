@@ -1,7 +1,7 @@
 # Copyright (c) 2013 Hugues Luc Bruant <hugues@qcodeedit.org>
 # All rights reserved.
 
-cmake_minimum_required(VERSION 2.5)
+cmake_minimum_required(VERSION 2.6)
 
 project(RotiDeCode)
 
@@ -27,3 +27,15 @@ add_qce_executable(rotidecode
         commandbar.cpp
         main.cpp
 )
+
+set(DATA_FILES
+    "data/common.qxm"
+    "data/common.qxf"
+    
+    "data/cpp.xsh"
+    "data/tex.xsh"
+    "data/xml.xsh"
+)
+
+install(TARGETS rotidecode DESTINATION bin)
+install(FILES ${DATA_FILES} DESTINATION share/rotidecode)

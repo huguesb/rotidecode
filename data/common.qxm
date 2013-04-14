@@ -1,0 +1,31 @@
+<!DOCTYPE QXM>
+<QXM version="1.0" >
+    <mark id="current">
+        <color>#CCD6FF</color>
+    </mark>
+    <mark id="breakpoint">
+        <color>#FF504A</color>
+        <icon>icons/break.png</icon>
+        <focus>false</focus>
+    </mark>
+    <mark id="active-breakpoint">
+        <color>#FFFF56</color>
+        <icon>icons/debug-resume.png</icon>
+        <focus>true</focus>
+    </mark>
+    <mark id="error">
+        <color>red</color>
+        <icon>icons/error.png</icon>
+        <focus>true</focus>
+    </mark>
+    <mark id="warning">
+        <color>#FF504A</color>
+        <icon>icons/warning.png</icon>
+        <focus>false</focus>
+    </mark>
+    <mark id="bookmark">
+        <color>darkgreen@60</color>
+        <icon>icons/book.png</icon>
+        <focus>false</focus>
+    </mark>
+</QXM>
