@@ -54,10 +54,24 @@ enum {
 
 /*!
  * \brief Helper for Buffer-centric Editor serialization
+ * 
+ * The serialized representation relies on the presence of a sorted list of
+ * file names. The list used for serilization needs to be sorted for faster
+ * index lookups.
+ * 
+ * The list used for deserialization needs to be equivalent to the one used for
+ * serialization for the subset of files referenced by the Editor. In other
+ * words the index of any file referenced by the Editor must be the same in the
+ * two lists.
+ * 
+ * \see Deserializer
  */
 class Serializer : public qce::EditorSerializer {
 public:
-    Serializer(Buffers *buffers) : m_buffers(buffers) {}
+    // NB: list must be sorted alphabetically 
+    Serializer(QStringList fileNames)
+    : m_fileNames(fileNames) {}
+    
     virtual ~Serializer() {}
     
     virtual void writeHeader(QDataStream& stream) const {
@@ -65,23 +79,25 @@ public:
     }
     
     virtual void serialize(QDataStream& stream, const qce::Editor *const editor) const {
-        if (m_buffers->isUntitled(editor)) {
-            stream << QString();
-        } else {
-            stream << editor->fileName();
-        }
+        int idx = qBinaryFind(m_fileNames, editor->fileName()) - m_fileNames.begin();
+        stream << (qint32)(idx < m_fileNames.count() ? idx : -1);
     }
     
 private:
-    Buffers *m_buffers;
+    QStringList m_fileNames;
 };
 
 /*!
  * \brief Helper for Buffer-centric Editor deserialization
+ * 
+ * \see Serializer
  */
 class Deserializer : public qce::EditorDeserializer {
 public:
-    Deserializer(Buffers *buffers) : m_buffers(buffers) {}
+    // NB: list must be the same as that passed to Serializer
+    Deserializer(Buffers *buffers, QStringList fileNames)
+    : m_buffers(buffers), m_fileNames(fileNames) {}
+    
     virtual ~Deserializer() {}
     
     virtual bool readHeader(QDataStream& stream) const {
@@ -91,14 +107,16 @@ public:
     }
     
     virtual qce::Editor* deserialize(QDataStream& stream) const {
-        QString fileName;
-        stream >> fileName;
-        if (fileName.isEmpty()) fileName = m_buffers->create();
+        qint32 idx;
+        stream >> idx;
+        QString fileName = idx >= 0 && idx < m_fileNames.count()
+                ? m_fileNames.at(idx) : m_buffers->create();
         return m_buffers->acquire(fileName);
     }
     
 private:
     Buffers *m_buffers;
+    QStringList m_fileNames;
 };
 
 }  // namespace
@@ -236,7 +254,7 @@ void Window::readSettings() {
     }
     
     m_editor->restoreState(s.value("editors").toByteArray(),
-                           Deserializer(m_buffers));
+                           Deserializer(m_buffers, fileNames));
     
     // for some weird reason, dock widget geometry cannot be restored properly
     // until the central widget is resized and displayed...
@@ -244,12 +262,15 @@ void Window::readSettings() {
 }
 
 void Window::writeSettings() {
+    QStringList fileNames = m_buffers->fileNames();
+    qSort(fileNames);
+    
     QSettings s;
     s.beginGroup("window");
     s.setValue("geometry", QMainWindow::saveGeometry());
     s.setValue("state", QMainWindow::saveState());
-    s.setValue("buffers", m_buffers->fileNames());
-    s.setValue("editors", m_editor->saveState(Serializer(m_buffers)));
+    s.setValue("buffers", fileNames);
+    s.setValue("editors", m_editor->saveState(Serializer(fileNames)));
 }
 
 void Window::restoreDockState() {
