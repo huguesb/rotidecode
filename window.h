@@ -35,7 +35,7 @@ class CommandBar;
 
 namespace qce{
 class Editor;
-class CodeEditor;
+class SplitEditor;
 }
 
 class QListView;
@@ -53,6 +53,13 @@ class Window : public QMainWindow {
 public:
     Window();
     ~Window();
+    
+public slots:
+    void readSettings();
+    void writeSettings();
+    
+protected:
+    virtual void closeEvent(QCloseEvent *e);
     
 private slots:
     void fileNew();
@@ -72,11 +79,13 @@ private slots:
     
     void setActiveBuffer(const QString& path);
     
+    void restoreDockState();
+    
 private:
     void createMenu();
     void createBuffersDock();
     
-    qce::CodeEditor *m_editor;
+    qce::SplitEditor *m_editor;
     Buffers *m_buffers;
     QListView *m_bufferList;
     CommandBar *m_commandBar;

@@ -30,9 +30,11 @@
 #include "commandbar.h"
 
 #include <editor.h>
-#include <codeeditor.h>
+#include <spliteditor.h>
 
 #include <QAction>
+#include <QCloseEvent>
+#include <QDataStream>
 #include <QDockWidget>
 #include <QListView>
 #include <QMenu>
@@ -40,12 +42,73 @@
 #include <QMetaMethod>
 #include <QFileDialog>
 #include <QApplication>
+#include <QSettings>
+#include <QDebug>
+#include <QTimer>
+
+namespace {
+
+enum {
+    BufferSerializationVersion = 0
+};
+
+/*!
+ * \brief Helper for Buffer-centric Editor serialization
+ */
+class Serializer : public qce::EditorSerializer {
+public:
+    Serializer(Buffers *buffers) : m_buffers(buffers) {}
+    virtual ~Serializer() {}
+    
+    virtual void writeHeader(QDataStream& stream) const {
+        stream << qint32(BufferSerializationVersion);
+    }
+    
+    virtual void serialize(QDataStream& stream, const qce::Editor *const editor) const {
+        if (m_buffers->isUntitled(editor)) {
+            stream << QString();
+        } else {
+            stream << editor->fileName();
+        }
+    }
+    
+private:
+    Buffers *m_buffers;
+};
+
+/*!
+ * \brief Helper for Buffer-centric Editor deserialization
+ */
+class Deserializer : public qce::EditorDeserializer {
+public:
+    Deserializer(Buffers *buffers) : m_buffers(buffers) {}
+    virtual ~Deserializer() {}
+    
+    virtual bool readHeader(QDataStream& stream) const {
+        qint32 version;
+        stream >> version;
+        return version == BufferSerializationVersion;
+    }
+    
+    virtual qce::Editor* deserialize(QDataStream& stream) const {
+        QString fileName;
+        stream >> fileName;
+        if (fileName.isEmpty()) fileName = m_buffers->create();
+        return m_buffers->acquire(fileName);
+    }
+    
+private:
+    Buffers *m_buffers;
+};
+
+}  // namespace
+
 
 
 Window::Window() {
     m_buffers = new Buffers(this);
     
-    m_editor = new qce::CodeEditor(this);
+    m_editor = new qce::SplitEditor(this);
     setCentralWidget(m_editor);
     
     m_commandBar = new CommandBar;
@@ -77,7 +140,6 @@ Window::Window() {
 Window::~Window() {
     delete m_commandBar;
 }
-
 
 void Window::createMenu() {
     QAction *a;
@@ -153,6 +215,7 @@ void Window::createBuffersDock() {
             SLOT( currentBufferChanged(QModelIndex, QModelIndex) ) );
     
     QDockWidget *dock = new QDockWidget(tr("Open Files"), this);
+    dock->setObjectName("openfiles");
     dock->setWidget(m_bufferList);
     dock->setFeatures(QDockWidget::DockWidgetVerticalTitleBar);
     
@@ -161,6 +224,45 @@ void Window::createBuffersDock() {
     addDockWidget(Qt::LeftDockWidgetArea, dock);
 }
 
+void Window::readSettings() {
+    QSettings s;
+    s.beginGroup("window");
+    QMainWindow::restoreGeometry(s.value("geometry").toByteArray());
+    QMainWindow::restoreState(s.value("state").toByteArray());
+    
+    QStringList fileNames = s.value("buffers").toStringList();
+    foreach (QString fileName, fileNames) {
+        m_buffers->load(fileName);
+    }
+    
+    m_editor->restoreState(s.value("editors").toByteArray(),
+                           Deserializer(m_buffers));
+    
+    // for some weird reason, dock widget geometry cannot be restored properly
+    // until the central widget is resized and displayed...
+    QTimer::singleShot(10, this, SLOT( restoreDockState() ));
+}
+
+void Window::writeSettings() {
+    QSettings s;
+    s.beginGroup("window");
+    s.setValue("geometry", QMainWindow::saveGeometry());
+    s.setValue("state", QMainWindow::saveState());
+    s.setValue("buffers", m_buffers->fileNames());
+    s.setValue("editors", m_editor->saveState(Serializer(m_buffers)));
+}
+
+void Window::restoreDockState() {
+    QMainWindow::restoreState(QSettings().value("window/state").toByteArray());
+}
+
+void Window::closeEvent(QCloseEvent *e) {
+    // TODO: offer to save modified files
+    qDebug("closing...");
+    
+    writeSettings();
+    QMainWindow::closeEvent(e);
+}
 
 void Window::fileNew() {
     setActiveBuffer(m_buffers->create());
@@ -201,7 +303,7 @@ void Window::fileClose() {
 
 void Window::fileQuit() {
     // TODO: warn if unsaved buffers
-    qApp->quit();
+    close();
 }
 
 void Window::commandJump() {
@@ -238,6 +340,7 @@ void Window::currentBufferChanged(const QModelIndex& current, const QModelIndex&
 }
 
 void Window::setActiveBuffer(const QString& path) {
+    qDebug("set active: %s", qPrintable(path));
     if (path == m_editor->activeFileName()) return;
     m_buffers->release(m_editor->setActiveEditor(m_buffers->acquire(path)));
 }

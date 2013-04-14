@@ -39,6 +39,10 @@ App::App(int& argc, char **argv)
            qce::libVersionString(),
            qce::libGitCommitHash()
           );
+    
+    setOrganizationName("hugues");
+    setOrganizationDomain("rotideco.de");
+    setApplicationName("RotiDeCode");
 }
 
 void App::setup() {
@@ -49,6 +53,8 @@ void App::setup() {
 
 void App::setupQCE(const QDir& dataDir) {
     QString dataPath = dataDir.absolutePath();
+    
+    // TODO: auto-refresh of serialized files based on timestamps
     
     // load format scheme
     QFile qbf(dataDir.absoluteFilePath("formats.qbf"));

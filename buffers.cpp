@@ -101,6 +101,16 @@ Buffers::~Buffers() {
     qDeleteAll(m_buffers);
 }
 
+QStringList Buffers::fileNames() const {
+    QStringList l;
+    foreach (Buffer *b, m_buffers) {
+        if (!b->fileName.startsWith(tr("untitled "))) {
+            l << b->fileName;
+        }
+    }
+    return l;
+}
+
 Buffer* Buffers::createBuffer(QString name) {
     Buffer *b = new Buffer(new qce::Document(name, this));
     b->document->setHighlighter(qce::SyntaxHighlighter::fromFilename(name));
@@ -128,6 +138,7 @@ void Buffers::load(const QString& fileName) {
     if (!b) {
         b = createBuffer(fileName);
         b->document->load(fileName);
+        // TODO: handle missing/unreadable file
     }
 }
 
@@ -156,7 +167,7 @@ void Buffers::release(qce::Editor *e) {
     b->released = e;
 }
 
-bool Buffers::isUntitled(qce::Editor *e) const {
+bool Buffers::isUntitled(const qce::Editor *const e) const {
     return e->fileName().startsWith(tr("untitled "));
 }
 

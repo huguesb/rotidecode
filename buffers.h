@@ -57,11 +57,13 @@ public:
     Buffers(QObject *p = 0);
     ~Buffers();
     
+    QStringList fileNames() const;
+    
     QString create();
     
     qce::Editor* acquire(const QString& fileName);
     
-    bool isUntitled(qce::Editor *e) const;
+    bool isUntitled(const qce::Editor *const e) const;
     
     // model api
     QModelIndex indexForName(const QString& name) const;

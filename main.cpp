@@ -27,6 +27,8 @@
 #include "app.h"
 #include "window.h"
 
+#include <QSettings>
+
 #include <cstdio>
 #include <cstdlib>
 
@@ -34,8 +36,12 @@ int main(int argc, char **argv) {
     App app(argc, argv);
     app.setup();
     
+    // TODO: parse command line args (open files, inhibit session restore, ...)
+    
+    
     Window window;
     window.show();
+    window.readSettings();
     
     return app.exec();
 }
