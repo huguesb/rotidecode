@@ -33,6 +33,8 @@
 #include <syntaxhighlighter.h>
 #include <genericsyntaxhighlighter.h>
 
+#include <QDesktopServices>
+
 App::App(int& argc, char **argv) 
     : QApplication(argc, argv) {
     printf("RotiDeDode, using QCE %s [%s]\n",
@@ -42,13 +44,19 @@ App::App(int& argc, char **argv)
     
     setOrganizationName("hugues");
     setOrganizationDomain("rotideco.de");
-    setApplicationName("RotiDeCode");
+    setApplicationName("rotidecode");
 }
 
 void App::setup() {
-    // TODO: do not use hardcoded absolute data path
-    // TODO: try multiple data path?
-    setupQCE(QDir("/home/prog/playground/qce3/data"));
+    QString location = "/usr/share/rotidecode/";
+    // TODO: try multiple data path
+    // TODO: use data path in HOME to be able to store cached data
+    //QDesktopServices::storageLocation(QDesktopServices::DataLocation);
+    
+    QDir dataDir(location);
+    setupQCE(dataDir);
+    
+    updateQCECachedData(dataDir);
 }
 
 void App::setupQCE(const QDir& dataDir) {
@@ -63,10 +71,6 @@ void App::setupQCE(const QDir& dataDir) {
         qce::FormatScheme::get()->load(d);
     } else {
         qce::FormatScheme::load(dataPath);
-        if (qbf.open(QFile::WriteOnly)) {
-            QDataStream d(&qbf);
-            qce::FormatScheme::get()->save(d);
-        }
     }
     
     // load mark scheme
@@ -76,10 +80,6 @@ void App::setupQCE(const QDir& dataDir) {
         qce::MarkScheme::get()->load(d);
     } else {
         qce::MarkScheme::load(dataPath);
-        if (qbm.open(QFile::WriteOnly)) {
-            QDataStream d(&qbm);
-            qce::MarkScheme::get()->save(d);
-        }
     }
     
     // load language definitions
@@ -89,9 +89,25 @@ void App::setupQCE(const QDir& dataDir) {
         qce::GenericSyntaxHighlighter::deserialize(d);
     } else {
         qce::SyntaxHighlighter::load(dataPath);
-        if (qbs.open(QFile::WriteOnly)) {
-            QDataStream d(&qbs);
-            qce::GenericSyntaxHighlighter::serialize(d);
-        }
+    }
+}
+
+void App::updateQCECachedData(const QDir& dataDir) {
+    QFile qbf(dataDir.absoluteFilePath("formats.qbf"));
+    if (qbf.open(QFile::WriteOnly)) {
+        QDataStream d(&qbf);
+        qce::FormatScheme::get()->save(d);
+    }
+    
+    QFile qbm(dataDir.absoluteFilePath("marks.qbm"));
+    if (qbm.open(QFile::WriteOnly)) {
+        QDataStream d(&qbm);
+        qce::MarkScheme::get()->save(d);
+    }
+    
+    QFile qbs(dataDir.absoluteFilePath("languages.qbs"));
+    if (qbs.open(QFile::WriteOnly)) {
+        QDataStream d(&qbs);
+        qce::GenericSyntaxHighlighter::serialize(d);
     }
 }

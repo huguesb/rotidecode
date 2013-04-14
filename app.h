@@ -40,6 +40,7 @@ public:
     
 private:
     void setupQCE(const QDir& dataPath);
+    void updateQCECachedData(const QDir& path);
 };
 
 #endif  // APP_H_
