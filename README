@@ -1,11 +1,43 @@
 RotiDeCode, make code so good you want to eat it
-------------------------------------------------
+================================================================================
+Copyright (c) 2013, Hugues Luc Bruant <hugues@qcodeedit.org>
+All rights reserved.
+================================================================================
 
-A trimmed-down text editor that aims to demonstrate the power and ease of use
-of QCodeEdit 3
+RotiDeCode is a trimmed-down text editor that aims to demonstrate the power and
+ease of use of QCodeEdit 3.
+
+
+It is still in an early Work In Progress, use it with care and don't blame the
+author if it eats your kitten. You have been warned.
+
+
+RotiDeCode sources are licensed under FreeBSD license (2-clause BSD, aka
+"Simplified BSD"). However the various dependencies may have more restrictive
+licenses (namely GPL and LGPL) whose term therefore apply to the combined work.
+
+
+Build
+-----
 
 Dependencies: Qt >= 4.6, QCodeEdit >= 3
 
-Licensed under FreeBSD license (2-clause BSD, aka "Simplified BSD")
+The canonical repository location is Gitorious:
+git://gitorious.org/rotidecode/rotidecode.git
 
+Unless otherwise specified, RotiDeCode master can be assumed to depend on QCE
+master at git://git.tuxfamily.org/gitroot/qcodeedit/qce3.git
+
+
+A CMake build file is provided (CMake >= 2.6 required)
+
+--------------------------------------------------------------------------------
+$ mkdir build
+$ cd build
+$ cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+$ make
+--------------------------------------------------------------------------------
+
+NB: You need Qt >= 4.6 and QCodeEdit >= 3 to be installed in such a way that
+CMake can find them.
 
