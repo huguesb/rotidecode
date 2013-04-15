@@ -1,0 +1,15 @@
+---
+layout: default
+title: RotiDeCode Development Blog
+---
+
+{% for page in paginator.posts %}
+  <h2 class="title"><a href="{{ page.url }}">{{ page.title }}</a></h2>
+  <span class="date">{{page.date | date_to_string}}</span>
+  <div class="entry">
+    {{ page.content }}
+  </div>
+{% endfor %}
+
+
+{% include page_nav.html %}
