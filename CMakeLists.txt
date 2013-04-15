@@ -35,6 +35,7 @@ set(DATA_FILES
     "data/cpp.xsh"
     "data/tex.xsh"
     "data/xml.xsh"
+    "data/doxygen.xsh"
 )
 
 install(TARGETS rotidecode DESTINATION bin)

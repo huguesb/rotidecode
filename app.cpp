@@ -83,13 +83,14 @@ void App::setupQCE(const QDir& dataDir) {
     }
     
     // load language definitions
-    QFile qbs(dataDir.absoluteFilePath("languages.qbs"));
-    if (qbs.exists() && qbs.open(QFile::ReadOnly)) {
-        QDataStream d(&qbs);
-        qce::GenericSyntaxHighlighter::deserialize(d);
-    } else {
+//     QFile qbs(dataDir.absoluteFilePath("languages.qbs"));
+//     if (qbs.exists() && qbs.open(QFile::ReadOnly)) {
+//         QDataStream d(&qbs);
+//         qce::GenericSyntaxHighlighter::deserialize(d);
+//     } else {
         qce::SyntaxHighlighter::load(dataPath);
-    }
+        qce::SyntaxHighlighter::finalize();
+//     }
 }
 
 void App::updateQCECachedData(const QDir& dataDir) {
@@ -105,9 +106,9 @@ void App::updateQCECachedData(const QDir& dataDir) {
         qce::MarkScheme::get()->save(d);
     }
     
-    QFile qbs(dataDir.absoluteFilePath("languages.qbs"));
-    if (qbs.open(QFile::WriteOnly)) {
-        QDataStream d(&qbs);
-        qce::GenericSyntaxHighlighter::serialize(d);
-    }
+//     QFile qbs(dataDir.absoluteFilePath("languages.qbs"));
+//     if (qbs.open(QFile::WriteOnly)) {
+//         QDataStream d(&qbs);
+//         qce::GenericSyntaxHighlighter::serialize(d);
+//     }
 }

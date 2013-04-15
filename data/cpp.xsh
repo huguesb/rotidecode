@@ -35,15 +35,16 @@
         </context>
     </context>
 
+    <embed>doxygen:comment</embed>
     <embed>cpp:comment</embed>
 
     <context name="preprocessor" format="preprocessor" stayOnLine="true" >
-        <enter>#[ \t]*(if|ifdef|else|elif|endif|define|include|pragma|error|warning)</enter>
+        <enter>#[ \t]*(if|ifdef|ifndef|else|elif|endif|define|include|pragma|error|warning)</enter>
         <leave>\n</leave>
         <embed>cpp:comment</embed>
         <token format="escapeseq" >\\\n</token>
     </context>
-
+    
     <context name="string" format="text">
         <enter>&quot;</enter>
         <leave>&quot;</leave>

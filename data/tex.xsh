@@ -9,19 +9,19 @@
             <subtoken format="text">[^{}]*</subtoken>
             <subtoken format="extra-keyword">}</subtoken>
         </token>
-        <context name="math" format="numbers">
-            <enter format="extra-keyword" paren="math:open" fold="1" indent="1">
+        <context name="math1" format="numbers">
+            <enter format="extra-keyword" paren="math1:open" fold="1" indent="1">
                 <subtoken>\\begin{</subtoken>
                 <subtoken format="comment">displaymath</subtoken>
                 <subtoken>}</subtoken>
             </enter>
-            <leave format="extra-keyword" paren="math:close" fold="1" indent="1">
+            <leave format="extra-keyword" paren="math1:close" fold="1" indent="1">
                 <subtoken>\\end{</subtoken>
                 <subtoken format="comment">displaymath</subtoken>
                 <subtoken>}</subtoken></leave>
             <embed>tex:math</embed>
         </context>
-        <context name="math" format="numbers">
+        <context name="math2" format="numbers">
             <enter format="preprocessor" paren="math2:open" fold="1">$</enter>
             <leave format="preprocessor" paren="math2:close" fold="1">$</leave>
             <embed>tex:math</embed>
