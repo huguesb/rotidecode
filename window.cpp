@@ -164,14 +164,22 @@ void Window::createMenu() {
     QMenu *m;
     
     m = menuBar()->addMenu(tr("&File"));
-    a = m->addAction(tr("&New"),    this, SLOT( fileNew() ), QKeySequence::New);
+    a = m->addAction(tr("&New"),
+                     this, SLOT( fileNew() ), QKeySequence::New);
     m->addSeparator();
-    a = m->addAction(tr("&Open"),   this, SLOT( fileOpen() ), QKeySequence::Open);
-    a = m->addAction(tr("&Save"),   this, SLOT( fileSave() ), QKeySequence::Save);
-    a = m->addAction(tr("Reloa&d"), this, SLOT( fileReload() ), QKeySequence::Refresh);
-    a = m->addAction(tr("&Close"),  this, SLOT( fileClose() ), QKeySequence::Close);
+    a = m->addAction(tr("&Open..."),
+                     this, SLOT( fileOpen() ), QKeySequence::Open);
+    a = m->addAction(tr("&Save"),
+                     this, SLOT( fileSave() ), QKeySequence::Save);
+    a = m->addAction(tr("Save As..."),
+                     this, SLOT( fileSaveAs() ), QKeySequence::SaveAs);
+    a = m->addAction(tr("Reloa&d"),
+                     this, SLOT( fileReload() ), QKeySequence::Refresh);
+    a = m->addAction(tr("&Close"),
+                     this, SLOT( fileClose() ), QKeySequence::Close);
     m->addSeparator();
-    a = m->addAction(tr("&Quit"),   this, SLOT( fileQuit() ), QKeySequence::Quit);
+    a = m->addAction(tr("&Quit"),
+                     this, SLOT( fileQuit() ), QKeySequence::Quit);
     
     
     m = menuBar()->addMenu(tr("&Edit"));
@@ -290,7 +298,7 @@ void Window::fileNew() {
 }
 
 void Window::fileOpen() {
-    QStringList fileNames = QFileDialog::getOpenFileNames(this, tr("Open file(s)..."));
+    QStringList fileNames = QFileDialog::getOpenFileNames(this, tr("Open file(s)"));
     if (fileNames.empty()) return;
     
     for (int i = 0; i < fileNames.count(); ++i) {
@@ -311,7 +319,17 @@ void Window::fileReload() {
 }
 
 void Window::fileSave() {
-    m_editor->save(m_editor->activeFileName());
+    if (m_buffers->isUntitled(m_editor->activeEditor())) {
+        fileSaveAs();
+    } else {
+        m_editor->save(m_editor->activeFileName());
+    }
+}
+
+void Window::fileSaveAs() {
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save file as"));
+    if (fileName.isEmpty()) return;
+    m_editor->save(fileName);
 }
 
 void Window::fileClose() {

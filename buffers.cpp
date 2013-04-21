@@ -201,23 +201,21 @@ void Buffers::fileNameChanged(QString oldFileName, QString newFileName) {
     Buffer *b = m_buffers.at(idx);
     Q_ASSERT(b->fileName == oldFileName);
     
-    beginRemoveRows(QModelIndex(), idx, idx);
-    m_buffers.removeAt(idx);
-    endRemoveRows();
-    
     int newIdx = lowerBound(m_buffers, newFileName);
-    
     if (newIdx < m_buffers.count() &&
         m_buffers.at(newIdx)->fileName == newFileName) {
         // 2 documents pointing to same file...
         // TODO: rename to non-conflicting name instead of forcefully closing
         close(newIdx);
+    
+        if (idx >= newIdx) --idx;
     }
     
-    beginInsertRows(QModelIndex(), idx, idx);
-    b->fileName = newFileName;
+    beginMoveRows(QModelIndex(), idx, idx, QModelIndex(), newIdx);
     m_buffers.insert(newIdx, b);
-    endInsertRows();
+    m_buffers.removeAt(idx < newIdx ? idx : idx + 1);
+    b->fileName = newFileName;
+    endMoveRows();
 }
 
 void Buffers::close(int idx) {

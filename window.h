@@ -66,6 +66,7 @@ private slots:
     void fileOpen();
     void fileReload();
     void fileSave();
+    void fileSaveAs();
     void fileClose();
     void fileQuit();
     
